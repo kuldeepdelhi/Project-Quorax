@@ -52,8 +52,18 @@ const postanswer = async (req, res) => {
         if (token == !answeredBy) {
             return res.status(404).send({ status: false, message: "You Are Not Authorised To Upload A Answer" })
         }
-        let create = await answerModel.create(Body)
-        return res.status(201).send({ status: true, message: "Your Answer Has Been Submitted", Data: create })
+        let userdata = await questionModel.findOne({ _id: questionId })
+        if (!(req.body.answeredBy == userdata.askedBy)) {
+            let incScore = await userModel.findOneAndUpdate({ _id: answeredBy }, { $inc: { creditScore: + 200 }}, { new: true })
+            const data = { answeredBy, text, questionId }
+            const answerData = await answerModel.create(data);
+            let totalData = { answerData, incScore }
+            return res.status(200).send({ status: false, message: "User Credit Score updated ", data: totalData });
+
+        } else {
+            
+            return res.status(400).send({ status: true, message: 'Sorry , You cannot Answer Your Own Question' });
+        }
     } catch (error) {
         return res.status(500).send({ status: false, message: error.message });
     }
@@ -75,7 +85,7 @@ const getanswer = async (req, res) => {
         }
         let findanswer = await answerModel.find({ questionId: question ,isDeleted:false})
         if (findanswer.length > 0) {
-            let Answer = await answerModel.find({ questionId: question,isDeleted:false}).select({ answeredBy: 1, text: 1 })
+            let Answer = await answerModel.find({ questionId: question,isDeleted:false}).select({ answeredBy: 1, text: 1 }).sort({ "createdAt": -1 }).sort({ "createdAt": -1 })
             let Question = findquestion.description
             let Details = { Question,QuestionID:question, Answer }
             return res.status(200).send({ status: true, message: "Succeefully Fetched All Details", Details })

@@ -45,6 +45,9 @@ const postquestion = async (req, res) => {
         if (askedBy != tokenId) {
             return res.status(401).send({ status: false, message: "You Are Not Authorized To Perform This Task" })
         }
+        if (find.creditScore < 100) {
+            return res.status(400).send({ status: false, Message: "You don't have enough credit score to post a question" })
+        }
         if (tag) {
             if (!isValid(tag)) {
                 return res.status(400).send({ status: false, message: "Please Provide The Tags" })
@@ -52,11 +55,13 @@ const postquestion = async (req, res) => {
             if (tag.length > 0) {
                 let data = { description, tag, askedBy }
                 let question = await questionModel.create(data)
+                await userModel.findOneAndUpdate({ _id: askedBy }, { $inc: { creditScore: -100 } })
                 return res.status(201).send({ status: true, message: "question posted successfully", data: question })
             }
         }
         let Data = { description, askedBy, isDeleted: false, createdAt: new Date(), updatedAt: new Date() }
         await questionModel.create(Data)
+        await userModel.findOneAndUpdate({ _id: askedBy }, { $inc: { creditScore: -100 } })
         return res.status(201).send({ status: true, message: "question posted successfully", Data: Data })
     } catch (error) {
         return res.status(500).send({ status: false, message: error.message });
@@ -108,7 +113,7 @@ const getquestionbyid = async (req, res) => {
         if (findquestion) {
             let { description, tag, askedBy, isDeleted, deletedAt, createdAt, updatedAt } = findquestion
 
-            let answers = await answerModel.find({ questionId: questionId, isDeleted: false }).select({ answeredBy: 1, text: 1 });
+            let answers = await answerModel.find({ questionId: questionId, isDeleted: false }).select({ answeredBy: 1, text: 1 }).sort({ createdAt: -1 });
             if (answers.length > 0) {
 
                 const data = { description, tag, askedBy, answers, isDeleted, deletedAt, createdAt, updatedAt }
@@ -168,7 +173,7 @@ const updatequestionbyid = async (req, res) => {
         if (token == !user) {
             return res.status(401).send({ status: false, message: "You Are Not Authorised To Perform This Action" })
         }
-        let update = await questionModel.findOne({ _id: Id, isDeleted: false }, { description: description, tag: tag }, { new: true })
+        let update = await questionModel.findOneAndUpdate({ _id: Id, isDeleted: false }, { description: description, tag: tag }, { new: true })
         return res.status(200).send({ status: true, messege: "Data Updated Successfully", UpdatedData: update })
 
     } catch (error) {

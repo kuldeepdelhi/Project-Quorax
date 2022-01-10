@@ -15,7 +15,7 @@ let registerUser = async function (req, res) {
         }
 
         //
-        let { fname, lname, email, phone, password } = reqBody;
+        let { fname, lname, email, phone, password,creditScore } = reqBody;
 
         if (!validate.isValid(fname)) {
             res
@@ -65,37 +65,41 @@ let registerUser = async function (req, res) {
                 .send({ status: false, message: "password length must be 8 to 15" });
             return;
         }
+        if (!validate.isValid(creditScore)) {
+            return res.status(400).send({ status: false, message: "Please provide creditScore or creditScore field" });;
+        }
+        if (isNaN(creditScore)) {
+            return res.status(400).send({ status: false, message: "You can't use special character or alphabet in CreditScore" });
+        }
+        if ( creditScore < 0) {
+            return res.status(400).send({ status: false, message: "You can't Insert negative values in CreditScore" });
+        }
+
         let encryptPass = await bcryptjs.hash(password, 10);
         let saveData = {
             fname,
             lname,
             email,
+            creditScore,
             password: password ? encryptPass : "password is required",
         };
         if (phone) {
-
-            if (!validate.isValid(phone)) {
-            res.status(400).send({ status: false, message: "phone field is not be empty" });
-            return;
-        }
-
-        if (!validate.isValidPhone(phone)) {
-            res.status(400).send({ status: false, message: `${phone} is not a valid phone` });
-            return;
-        }
-    }
-
-        let findPhone = await userModel.findOne({ phone });
-
-        if (findPhone) {
-            res.status(400).send({
-                status: false,
-                message: `${phone} is already registered please login`,
-            });
-            return;
-        }
-        saveData.phone = phone;
-    
+           // if (!validate.isValid(phone)) {
+                 //res.status(400).send({ status: false, message: `phone no. is required` })
+                 //return
+            // }
+ 
+             if (!validate.isValidPhone(phone)) {
+                 res.status(400).send({ status: false, message: `phone should be a valid number` });
+                 return;
+             }
+             const isPhoneNumberAlreadyUsed = await userModel.findOne({ phone: phone });
+             if (isPhoneNumberAlreadyUsed) {
+                 res.status(400).send({ status: false, message: `${phone} mobile number is already registered`, });
+                 return;
+             }
+             saveData.phone = phone
+         }
             let createUser = await userModel.create(saveData);
             res.status(201).send({
                 status: true,
