@@ -2,40 +2,29 @@ const mongoose = require('mongoose')
 const questionModel = require('../models/questionModel')
 const userModel = require('../models/userModel')
 const answerModel = require('../models/answerModel')
+let validate = require('../validators/validator');
 
-const isValid = function (value) {
-    if (typeof value === 'undefined' || value === null) return false
-    if (typeof value === 'string' && value.trim().length === 0) return false
-    return true;
-}
 
-const isValidRequestBody = function (requestBody) {
-    return Object.keys(requestBody).length > 0
-}
-
-const isValidObjectId = function (objectId) {
-    return mongoose.Types.ObjectId.isValid(objectId)
-}
 
 //POST QUESTION
 const postquestion = async (req, res) => {
     try {
         const Body = req.body
         let tokenId = req.userId
-        if (!isValidObjectId(tokenId)) {
+        if (!validate.isValidObjectId(tokenId)) {
             return res.status(400).send({ status: false, message: "The TokenId Is InValid" })
         }
-        if (!isValidRequestBody(Body)) {
+        if (!validate.isValidRequestBody(Body)) {
             return res.status(400).send({ status: false, message: "Please Provide The Data To Continue" })
         }
         const { description, tag, askedBy } = Body
-        if (!isValid(description)) {
+        if (!validate.isValid(description)) {
             return res.status(400).send({ status: false, message: "Please Provide Your Question Description" })
         }
-        if (!isValid(askedBy)) {
+        if (!validate.isValid(askedBy)) {
             return res.status(400).send({ status: false, message: "Please Provide User Id" })
         }
-        if (!isValidObjectId(askedBy)) {
+        if (!validate.isValidObjectId(askedBy)) {
             return res.status(400).send({ status: false, message: "The UserId Is InValid" })
         }
         let find = await userModel.findById({ _id: askedBy })
@@ -49,7 +38,7 @@ const postquestion = async (req, res) => {
             return res.status(400).send({ status: false, Message: "You don't have enough credit score to post a question" })
         }
         if (tag) {
-            if (!isValid(tag)) {
+            if (!validate.isValid(tag)) {
                 return res.status(400).send({ status: false, message: "Please Provide The Tags" })
             }
             if (tag.length > 0) {
@@ -75,21 +64,28 @@ const getquestion = async (req, res) => {
         const body = req.query
         const { tag, sort } = body
         if (tag) {
-            if (!isValid(tag)) {
+            if (!validate.isValid(tag)) {
                 res.status(400).send({ status: false, message: `Please Provide The Tag` });
                 return;
             }
-            updatedfilter["tag"] = tag
+            const Tags = tag.split(',')
+            updatedfilter["tag"] = { $all: Tags }
         }
         if (sort) {
             if (!(sort == -1 || sort == 1)) {
                 return res.status(400).send({ status: false, message: "You Can Only Use 1 For Ascending And -1 For Descending Sorting" })
             }
         }
-        let check = await questionModel.find(updatedfilter)
+        let check = await questionModel.find(updatedfilter).lean().sort({createdAt:sort})
         if (check.length > 0) {
-            let show = await questionModel.find(updatedfilter).sort({ createdAt: sort })
-            return res.status(200).send({ status: true, Data: show })
+            for (let i = 0; i < check.length; i++) {
+
+                let answer = await answerModel.find({ questionId: check[i]._id, isDeleted: false })
+                check[i]["answers"] = answer
+                console.log(answer)
+            }
+            //check = await questionModel.find(updatedfilter).lean().sort({ createdAt: sort })
+            return res.status(200).send({ status: true, Data: check })
         }
         else {
             return res.status(404).send({ messege: "Cant Find What You Are Looking For" })
@@ -103,10 +99,10 @@ const getquestion = async (req, res) => {
 const getquestionbyid = async (req, res) => {
     try {
         let questionId = req.params.questionId
-        if (!isValidObjectId(questionId)) {
+        if (!validate.isValidObjectId(questionId)) {
             return res.status(400).send({ status: false, messege: "Please Use A Valid Link The Question Id Is Invalid" })
         }
-        if (!isValid(questionId)) {
+        if (!validate.isValid(questionId)) {
             return res.status(400).send({ status: false, messege: "Please Use A Valid Link The Question Id Is Invalid" })
         }
         let findquestion = await questionModel.findOne({ _id: questionId, isDeleted: false }).select({ __v: 0 })
@@ -139,18 +135,18 @@ const updatequestionbyid = async (req, res) => {
         let token = req.userId
         let Body = req.body
 
-        if (!isValidObjectId(Id)) {
+        if (!validate.isValidObjectId(Id)) {
             return res.status(400).send({ status: false, messege: "Please Use A Valid Link The Question Id Is Invalid" })
         }
-        if (!isValid(Id)) {
+        if (!validate.isValid(Id)) {
             return res.status(400).send({ status: false, messege: "Please Use A Valid Link The Question Id Is Invalid" })
         }
-        if (!isValidRequestBody(Body)) {
+        if (!validate.isValidRequestBody(Body)) {
             return res.status(400).send({ status: false, messege: "Please Provide The Data You Want To Update" })
         }
         const { description, tag } = Body
         if (description) {
-            if (!isValid(description)) {
+            if (!validate.isValid(description)) {
                 return res.status(400).send({ status: false, messege: "Please Provide A Valid Description You Want To Update" })
             }
         }
@@ -158,7 +154,7 @@ const updatequestionbyid = async (req, res) => {
             return res.status(400).send({ status: false, messege: "Please Provide A Valid Description You Want To Update" })
         }
         if (tag) {
-            if (!isValid(tag)) {
+            if (!validate.isValid(tag)) {
                 return res.status(400).send({ status: false, messege: "Please Provide A Valid Tag You Want To Update" })
             }
         }
@@ -187,10 +183,10 @@ const deletequestionbyid = async (req, res) => {
     try {
         let Id = req.params.questionId
         let token = req.userId
-        if (!isValidObjectId(Id)) {
+        if (!validate.isValidObjectId(Id)) {
             return res.status(400).send({ status: true, messege: "The Question Id Is Invalid" })
         }
-        if (!isValidObjectId(token)) {
+        if (!validate.isValidObjectId(token)) {
             return res.status(400).send({ status: true, messege: "The Token Id Is Invalid" })
         }
         let find = await questionModel.findOne({ _id: Id, isDeleted: false })

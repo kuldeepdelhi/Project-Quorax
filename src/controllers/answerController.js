@@ -2,43 +2,31 @@ const mongoose = require('mongoose')
 const questionModel = require('../models/questionModel')
 const userModel = require('../models/userModel')
 const answerModel = require('../models/answerModel')
+let validate = require('../validators/validator');
 
-const isValid = function (value) {
-    if (typeof value === 'undefined' || value === null) return false
-    if (typeof value === 'string' && value.trim().length === 0) return false
-    return true;
-}
-
-const isValidRequestBody = function (requestBody) {
-    return Object.keys(requestBody).length > 0
-}
-
-const isValidObjectId = function (objectId) {
-    return mongoose.Types.ObjectId.isValid(objectId)
-}
 
 //Post Answer
 const postanswer = async (req, res) => {
     try {
         const Body = req.body
         let token = req.userId
-        if (!isValidRequestBody(Body)) {
+        if (!validate.isValidRequestBody(Body)) {
             return res.status(400).send({ status: false, message: "Please Provide A valid Data To Cotinue" })
         }
         const { answeredBy, questionId, text } = Body
-        if (!isValid(answeredBy)) {
+        if (!validate.isValid(answeredBy)) {
             return res.status(400).send({ status: false, message: "Please Provide The User Id" })
         }
-        if (!isValidObjectId(answeredBy)) {
+        if (!validate.isValidObjectId(answeredBy)) {
             return res.status(400).send({ status: false, message: "The User Id Is InValid" })
         }
-        if (!isValid(questionId)) {
+        if (!validate.isValid(questionId)) {
             return res.status(400).send({ status: false, message: "Please Provide The Question Id" })
         }
-        if (!isValidObjectId(questionId)) {
+        if (!validate.isValidObjectId(questionId)) {
             return res.status(400).send({ status: false, message: "The Question Id Is InValid" })
         }
-        if (!isValid(text)) {
+        if (!validate.isValid(text)) {
             return res.status(400).send({ status: false, message: "Please Provide Your Answer For The Question" })
         }
         const find = await userModel.findOne({ _id: answeredBy })
@@ -73,10 +61,10 @@ const postanswer = async (req, res) => {
 const getanswer = async (req, res) => {
     try {
         let question = req.params.questionId
-        if (!isValid(question)) {
+        if (!validate.isValid(question)) {
             return res.status(400).send({ status: false, message: "Please Provide A Valid QuestionId" })
         }
-        if (!isValidObjectId(question)) {
+        if (!validate.isValidObjectId(question)) {
             return res.status(400).send({ status: false, message: "The QuestionId Is InValid" })
         }
         let findquestion = await questionModel.findOne({ _id: question,isDeleted:false })
@@ -85,7 +73,7 @@ const getanswer = async (req, res) => {
         }
         let findanswer = await answerModel.find({ questionId: question ,isDeleted:false})
         if (findanswer.length > 0) {
-            let Answer = await answerModel.find({ questionId: question,isDeleted:false}).select({ answeredBy: 1, text: 1 }).sort({ "createdAt": -1 }).sort({ "createdAt": -1 })
+            let Answer = await answerModel.find({ questionId: question,isDeleted:false}).select({ answeredBy: 1, text: 1 }).sort({ "createdAt": -1 })
             let Question = findquestion.description
             let Details = { Question,QuestionID:question, Answer }
             return res.status(200).send({ status: true, message: "Succeefully Fetched All Details", Details })
@@ -102,23 +90,23 @@ const updateanswer = async (req, res) => {
         let ID = req.params.answerId
         let token = req.userId
         let Body = req.body
-        if(!isValid(ID)){
+        if(!validate.isValid(ID)){
             return res.status(400).send({status:false,message:"The Answer Id Is InValid"})
         }
-        if(!isValidObjectId(ID)){
+        if(!validate.isValidObjectId(ID)){
             return res.status(400).send({status:false,message:"The Answer Id Is Not A Valid ObjectId"})
         }
-        if(!isValid(token)){
+        if(!validate.isValid(token)){
             return res.status(400).send({status:false,message:"The Token Id Is InValid"})
         }
-        if(!isValidObjectId(token)){
+        if(!validate.isValidObjectId(token)){
             return res.status(400).send({status:false,message:"The Token Id Is Not A Valid ObjectId"})
         }
-        if(!isValidRequestBody(Body)){
+        if(!validate.isValidRequestBody(Body)){
             return res.status(400).send({status:false,message:"Please Provide The Requird Field To Update"}) 
         }
         const {text} = Body
-        if(!isValid(text)){
+        if(!validate.isValid(text)){
             return res.status(400).send({status:false,message:"Please Provide Your New Answer For Updation"}) 
         }
         let found = await answerModel.findOne({_id:ID,isDeleted:false})
@@ -141,16 +129,16 @@ const deleteanswer = async (req, res) => {
     try {
         let ID = req.params.answerId
         let token = req.userId
-        if(!isValid(ID)){
+        if(!validate.isValid(ID)){
             return res.status(400).send({status:false,message:"The Answer Id Is InValid"})
         }
-        if(!isValidObjectId(ID)){
+        if(!validate.isValidObjectId(ID)){
             return res.status(400).send({status:false,message:"The Answer Id Is Not A Valid ObjectId"})
         }
-        if(!isValid(token)){
+        if(!validate.isValid(token)){
             return res.status(400).send({status:false,message:"The Token Id Is InValid"})
         }
-        if(!isValidObjectId(token)){
+        if(!validate.isValidObjectId(token)){
             return res.status(400).send({status:false,message:"The Token Id Is Not A Valid ObjectId"})
         }
         let found = await answerModel.findOne({_id:ID,isDeleted:false})
